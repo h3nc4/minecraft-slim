@@ -1,0 +1,67 @@
+name: Update Paper Version
+
+on:
+  schedule:
+    - cron: "33 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-paper
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Update Paper JAR URL
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run actions/checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: Resolve latest Paper artifact
+        id: paper
+        run: |
+          set -eu
+          version="$(curl -fsSL https://fill.papermc.io/v3/projects/paper | jq -r '
+            .versions
+            | values
+            | add
+            | map(select(test("-(pre|rc)"; "i") | not))
+            | sort_by(split(".") | map(tonumber))
+            | last
+          ')"
+          build_json="$(curl -fsSL "https://fill.papermc.io/v3/projects/paper/versions/${version}/builds" | jq -r '
+            map(select(.channel == "STABLE"))
+            | sort_by(.id)
+            | last
+          ')"
+          build="$(printf '%s\n' "$build_json" | jq -r '.id')"
+          url="$(printf '%s\n' "$build_json" | jq -r '.downloads["server:default"].url')"
+          sha="$(printf '%s\n' "$build_json" | jq -r '.commits[0].sha[0:7]')"
+          echo "version=${version}-${build}" >>"${GITHUB_OUTPUT}"
+          echo "url=${url}" >>"${GITHUB_OUTPUT}"
+          echo "sha=${sha}" >>"${GITHUB_OUTPUT}"
+
+      - name: Update Dockerfile if needed
+        run: |
+          set -eu
+          new_url="${{ steps.paper.outputs.url }}"
+          current_url="$(sed -n 's/^ARG PAPER_URL="\([^"]*\)"/\1/p' Dockerfile)"
+          if [ "${new_url}" = "${current_url}" ]; then
+            echo "Already up-to-date"
+            exit 0
+          fi
+          sed -i "s|^ARG PAPER_URL=.*|ARG PAPER_URL=\"${new_url}\"|" Dockerfile
+
+      - name: Commit and push
+        uses: planetscale/ghcommit-action@25309d8005ac7c3bcd61d3fe19b69e0fe47dbdde # v0.2.20
+        with:
+          commit_message: "Bump Paper server to ${{ steps.paper.outputs.version }} ${{ steps.paper.outputs.sha }}"
+          repo: ${{ github.repository }}
+          branch: main
+          file_pattern: "Dockerfile"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
