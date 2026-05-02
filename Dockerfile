@@ -43,7 +43,7 @@ RUN cp --parents \
 ################################################################################
 # Final Image
 FROM scratch AS final
-ARG PAPER_URL="null"
+ARG PAPER_URL="https://fill-data.papermc.io/v1/objects/6934188878fc351e1be5bfba5f2b8c4591224886e4b34e3de09dbec68a351caf/paper-26.1.2-53.jar"
 
 COPY --from=jre-builder /rootfs /
 ADD --chown=65534:65534 ${PAPER_URL} /opt/paper/paper.jar
