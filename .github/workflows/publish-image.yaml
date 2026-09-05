@@ -36,6 +36,9 @@ jobs:
         id: sha
         run: echo "short=${GITHUB_SHA::7}" >>${GITHUB_OUTPUT}
 
+      - name: Name the published image
+        run: echo "IMAGE=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')" >>"${GITHUB_ENV}"
+
       - name: Run docker/build-push-action
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
@@ -43,5 +46,5 @@ jobs:
           file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ vars.DOCKERHUB_USERNAME }}/${{ vars.IMAGE_NAME }}:latest
-            ${{ vars.DOCKERHUB_USERNAME }}/${{ vars.IMAGE_NAME }}:${{ steps.sha.outputs.short }}
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ steps.sha.outputs.short }}
