@@ -1,18 +1,22 @@
 # minecraft slim
 
-A scratch-built container featuring the Paper Minecraft server.
+The Paper Minecraft server on `FROM scratch`, with a Temurin JRE and nothing else. The image lacks a shell and a package manager, which leaves the server as the only thing it can run.
 
-## Usage
+## Setting up
 
-Create a persistent data directory:
+The server needs a data directory on the host, owned by the uid the container runs as, and it refuses to start until Mojang's EULA is accepted.
 
 ```bash
 mkdir data
 echo "eula=true" >data/eula.txt
-chown -R 65534:65534 data
-````
+doas chown -R 65534:65534 data
+```
 
-Run the container:
+Writing `eula=true` states agreement to the [Minecraft EULA](https://aka.ms/MinecraftEULA). Read it before doing that, since nothing here asks again.
+
+The `chown` needs root, because 65534 is `nobody` and the directory belongs to whoever created it. Without it the server cannot write its world and exits.
+
+## Running
 
 ```bash
 docker run -d \
@@ -22,19 +26,40 @@ docker run -d \
   h3nc4/minecraft-slim
 ```
 
-## Environment Variables
+The server console is on the container's stdin. Start it with `-it` in place of `-d` to type commands, or attach later with `docker attach minecraft`. The entrypoint passes `nogui`, so no window is involved either way.
 
-| Variable  | Default      | Description            |
-| --------- | ------------ | ---------------------- |
-| JAVA_OPTS | JVM defaults | Additional JVM options |
+## Passing JVM options
 
-## Volumes
+**Use `JDK_JAVA_OPTIONS`.** The entrypoint execs `java` directly, and `java` reads that variable.
 
-| Path  | Description           |
-| ----- | --------------------- |
-| /data | World and server data |
+```bash
+docker run -d \
+  -p 25565:25565 \
+  -v "${PWD}/data:/data" \
+  -e JDK_JAVA_OPTIONS="-Xmx4G -Xms4G" \
+  --name minecraft \
+  h3nc4/minecraft-slim
+```
+
+`JAVA_TOOL_OPTIONS` works as well. Either one prints a `Picked up` line at startup, which confirms it arrived.
+
+**`JAVA_OPTS` has no effect.** The image sets it, and nothing reads it: the entrypoint is an exec form that never expands a variable, and `java` itself ignores that name. A bogus flag passed through `JAVA_OPTS` starts the server anyway, which is how to tell it is being dropped. That also means the `-XX:MaxRAMPercentage=75.0` the image sets there never applies. The JVM falls back to its own default heap unless one of the two variables above says otherwise.
+
+## Reference
+
+| Detail | Value |
+| --- | --- |
+| Port | 25565 |
+| Data | `/data`, the working directory |
+| User | `65534:65534` |
+| Server | Paper, `/opt/paper/paper.jar` |
+| Runtime | Temurin JRE 25 |
+
+`/data` holds the world, `server.properties`, `eula.txt`, plugins and logs. It is the only path the server writes to, which makes it the only path a backup has to cover.
 
 ## License
+
+<!-- vale off -->
 
 minecraft-slim is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
