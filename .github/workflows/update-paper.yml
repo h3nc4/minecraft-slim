@@ -25,19 +25,28 @@ jobs:
         id: paper
         run: |
           set -eu
-          version="$(curl -fsSL https://fill.papermc.io/v3/projects/paper | jq -r '
+          versions="$(curl -fsSL https://fill.papermc.io/v3/projects/paper | jq -r '
             .versions
             | values
             | add
             | map(select(test("-(pre|rc)"; "i") | not))
             | sort_by(split(".") | map(tonumber))
-            | last
+            | reverse
+            | .[]
           ')"
-          build_json="$(curl -fsSL "https://fill.papermc.io/v3/projects/paper/versions/${version}/builds" | jq -r '
-            map(select(.channel == "STABLE"))
-            | sort_by(.id)
-            | last
-          ')"
+          build_json=null
+          for version in ${versions}; do
+            build_json="$(curl -fsSL "https://fill.papermc.io/v3/projects/paper/versions/${version}/builds" | jq -c '
+              map(select(.channel == "STABLE"))
+              | sort_by(.id)
+              | last
+            ')"
+            if [ "${build_json}" != "null" ]; then break; fi
+          done
+          if [ "${build_json}" = "null" ]; then
+            echo "No stable Paper build found" >&2
+            exit 1
+          fi
           build="$(printf '%s\n' "$build_json" | jq -r '.id')"
           url="$(printf '%s\n' "$build_json" | jq -r '.downloads["server:default"].url')"
           sha="$(printf '%s\n' "$build_json" | jq -r '.commits[0].sha[0:7]')"
