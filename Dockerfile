@@ -50,7 +50,7 @@ ADD --chown=65534:65534 ${PAPER_URL} /opt/paper/paper.jar
 
 ENV JAVA_HOME=/opt/java
 ENV PATH="/opt/java/bin"
-ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
 
 EXPOSE 25565
 WORKDIR /data

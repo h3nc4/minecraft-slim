@@ -41,9 +41,11 @@ docker run -d \
   h3nc4/minecraft-slim
 ```
 
-`JAVA_TOOL_OPTIONS` works as well. Either one prints a `Picked up` line at startup, which confirms it arrived.
+Every variable that arrives prints a `Picked up` line at startup, which confirms it was read.
 
-**`JAVA_OPTS` has no effect.** The image sets it, and nothing reads it: the entrypoint is an exec form that never expands a variable, and `java` itself ignores that name. A bogus flag passed through `JAVA_OPTS` starts the server anyway, which is how to tell it is being dropped. That also means the `-XX:MaxRAMPercentage=75.0` the image sets there never applies. The JVM falls back to its own default heap unless one of the two variables above says otherwise.
+**The image sizes the heap at 75% of the container's memory limit.** It sets `JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"`, so a container started with `--memory 4g` gets a 3G heap without any flag. `JDK_JAVA_OPTIONS` is read after that default, so an `-Xmx` or another `-XX:MaxRAMPercentage` there overrides it. Passing `JAVA_TOOL_OPTIONS` at run time replaces the default outright, and the JVM falls back to its own 25% unless the new value sizes the heap.
+
+`JAVA_OPTS` is dropped. The entrypoint is an exec form that expands no variable, and `java` ignores that name.
 
 ## Reference
 
