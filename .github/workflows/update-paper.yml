@@ -50,9 +50,11 @@ jobs:
           build="$(printf '%s\n' "$build_json" | jq -r '.id')"
           url="$(printf '%s\n' "$build_json" | jq -r '.downloads["server:default"].url')"
           sha="$(printf '%s\n' "$build_json" | jq -r '.commits[0].sha[0:7]')"
-          echo "version=${version}-${build}" >>"${GITHUB_OUTPUT}"
-          echo "url=${url}" >>"${GITHUB_OUTPUT}"
-          echo "sha=${sha}" >>"${GITHUB_OUTPUT}"
+          {
+            echo "version=${version}-${build}"
+            echo "url=${url}"
+            echo "sha=${sha}"
+          } >>"${GITHUB_OUTPUT}"
 
       - name: Update Dockerfile if needed
         run: |
