@@ -16,7 +16,7 @@
 
 ################################################################################
 # JRE Builder
-FROM eclipse-temurin:25.0.5_8-jre@sha256:53ae0540cd9b483659be743dc246009a19aab718d73e546303291dbe8aa74692 AS jre-builder
+FROM eclipse-temurin:25.0.5_8-jre@sha256:9c1a8694c60b18992d36703446b7326430ad8b32c8fd313b42efd02ac25f2c86 AS jre-builder
 
 # Create rootfs
 RUN mkdir -p /rootfs/opt/java /rootfs/tmp && \
